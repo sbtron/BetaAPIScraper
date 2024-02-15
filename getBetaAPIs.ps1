@@ -1,17 +1,27 @@
 # TODO: Update to the teams-js\src directory
-$folderPath = "PathTo\teams-js\src"
+$folderPath = "PathTo\microsoft-teams-library-js\packages\teams-js\src"
 
 #csv file will be in the same folderpath by default
-$csvFilePath = "$folderpath\output.csv"
+$csvFilePath = "$folderpath\APIs.csv"
 
 
 
-$betaFunctions = New-Object System.Collections.ArrayList
+$trackedFunctions = New-Object System.Collections.ArrayList
 
 foreach ($filePath in (Get-ChildItem $folderPath -Recurse -Filter *.ts).FullName) {
     $fileContent = Get-Content $filePath
+    $relativepath = $filePath.Substring($filePath.IndexOf("src")+4);
+    if ($relativepath.IndexOf("\") -gt 0)
+        {
+            $type = $relativepath.Substring(0,$relativepath.IndexOf("\"));
+        }
+    $tsfilename = $relativepath.Substring($relativepath.IndexOf("\")+1,($relativepath.Length - ($relativepath.IndexOf("\")+1)));
+    
+
+            
     $inCommentBlock = $false
     $inBetaFunction = $false
+    $inDeprecatedFunction = $false
     $functionName = ""
     $namespace = ""
 
@@ -25,18 +35,27 @@ foreach ($filePath in (Get-ChildItem $folderPath -Recurse -Filter *.ts).FullName
         if ($inCommentBlock -and $line -match "\@beta") {
             $inBetaFunction = $true
         }
+        if ($inCommentBlock -and $line -match "\@deprecated") {
+            $inDeprecatedFunction = $true
+        }
         if ($line -match "\*\/") {
             $inCommentBlock = $false
         }
-        if ($inBetaFunction -and $line -match "function\s+(\w+)") {
-            $functionName = $Matches.Item(1)
-            $relativepath = $filePath.Substring($filePath.IndexOf("src")+4);
-            $betaFunctions.Add([PSCustomObject]@{FilePath=$relativepath; Namespace=$namespace; Function=$functionName}) | Out-Null
+        if ($inBetaFunction -and $line -match "export function\s+(\w+)") {
+            $functionName = $Matches.Item(1);
+        
+            $trackedFunctions.Add([PSCustomObject]@{FilePath=$relativepath; Type=$type; tsfilename=$tsfilename; Namespace=$namespace; State='Beta'; Function=$functionName}) | Out-Null
             $inBetaFunction = $false
+        }
+        if ($inDeprecatedFunction -and $line -match "function\s+(\w+)") {
+            $functionName = $Matches.Item(1)
+            
+            $trackedFunctions.Add([PSCustomObject]@{FilePath=$relativepath; Type=$type; tsfilename=$tsfilename; Namespace=$namespace; State='Deprecated'; Function=$functionName}) | Out-Null
+            $inDeprecatedFunction = $false
         }
     }
 }
 
-$betaFunctions | Export-Csv -Path $csvFilePath -NoTypeInformation -Force
+$trackedFunctions | Export-Csv -Path $csvFilePath -NoTypeInformation -Force
 
 Write-Output "CSV file exported to $csvFilePath"
