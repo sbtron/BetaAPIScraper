@@ -16,8 +16,6 @@ foreach ($filePath in (Get-ChildItem $folderPath -Recurse -Filter *.ts).FullName
             $type = $relativepath.Substring(0,$relativepath.IndexOf("\"));
         }
     $tsfilename = $relativepath.Substring($relativepath.IndexOf("\")+1,($relativepath.Length - ($relativepath.IndexOf("\")+1)));
-    
-
             
     $inCommentBlock = $false
     $inBetaFunction = $false
@@ -26,8 +24,13 @@ foreach ($filePath in (Get-ChildItem $folderPath -Recurse -Filter *.ts).FullName
     $namespace = ""
 
     foreach ($line in $fileContent) {
-        if ($line -match "namespace\s+(\w+)") {
+        if ($line -match "export namespace\s+(\w+)") {
+            if ($namespace -eq ""){
             $namespace = $Matches.Item(1)
+            }
+            else {
+            $namespace = $namespace+"."+$Matches.Item(1); 
+            }
         }
         if ($line -match "\/\*\*") {
             $inCommentBlock = $true
