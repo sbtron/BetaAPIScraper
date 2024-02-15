@@ -1,5 +1,5 @@
-# TODO: Update to the teams-js\src directory
-$folderPath = "PathTo\microsoft-teams-library-js\packages\teams-js\src"
+# TODO: Update to the packages\teams-js\src directory
+$folderPath = "LocalPathTo\microsoft-teams-library-js\packages\teams-js\src"
 
 #csv file will be in the same folderpath by default
 $csvFilePath = "$folderpath\APIs.csv"
@@ -31,6 +31,8 @@ foreach ($filePath in (Get-ChildItem $folderPath -Recurse -Filter *.ts).FullName
         }
         if ($line -match "\/\*\*") {
             $inCommentBlock = $true
+            $inBetaFunction = $false
+            $inDeprecatedFunction = $false
         }
         if ($inCommentBlock -and $line -match "\@beta") {
             $inBetaFunction = $true
@@ -43,13 +45,12 @@ foreach ($filePath in (Get-ChildItem $folderPath -Recurse -Filter *.ts).FullName
         }
         if ($inBetaFunction -and $line -match "export function\s+(\w+)") {
             $functionName = $Matches.Item(1);
-        
             $trackedFunctions.Add([PSCustomObject]@{FilePath=$relativepath; Type=$type; tsfilename=$tsfilename; Namespace=$namespace; State='Beta'; Function=$functionName}) | Out-Null
             $inBetaFunction = $false
+
         }
-        if ($inDeprecatedFunction -and $line -match "function\s+(\w+)") {
+        if ($inDeprecatedFunction -and $line -match "export function\s+(\w+)") {
             $functionName = $Matches.Item(1)
-            
             $trackedFunctions.Add([PSCustomObject]@{FilePath=$relativepath; Type=$type; tsfilename=$tsfilename; Namespace=$namespace; State='Deprecated'; Function=$functionName}) | Out-Null
             $inDeprecatedFunction = $false
         }
